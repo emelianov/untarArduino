@@ -25,13 +25,16 @@
  */
 
 /* These are all highly standard and portable headers. */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
 
 /* This is for mkdir(); this may need to be changed for some platforms. */
-#include <sys/stat.h>  /* For mkdir() */
+//#include <sys/stat.h>  /* For mkdir() */
 
+class tar {
+public:
+void begin(stream src, FS dst);
 /* Parse an octal number, ignoring leading and trailing nonsense. */
 static int
 parseoct(const char *p, size_t n)
