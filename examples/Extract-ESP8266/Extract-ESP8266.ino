@@ -7,13 +7,19 @@
 Tar<FS> tar(&SPIFFS);
 
 void setup() {
-  const char* dest = "/";
+  Serial.begin(74880);
+  SPIFFS.begin();
+  const char* dest = FILENAME;
 	File f = SPIFFS.open(FILENAME, "r");
-  tar.f((Stream*)&f);
-	tar.x(dest);
+  if (f) {
+    tar.f((Stream*)&f);
+    tar.C("/");
+	  tar.x(dest);
+  } else {
+    Serial.println("Error open .tar file");
+  }
 }
 
 void loop() {
 
 }
-
