@@ -12,33 +12,50 @@
  */
 
 // Uncomment following definition to enable not flat namespace filesystems
-//#define MKDIR
+//#define TAR_MKDIR
+
+// Comment to remove output extracting process to Serial
+#define TAR_VERBOSE
 
 template <typename T>
 class Tar {
 public:
 	Tar(T* dst) {
 		FSC = dst;
+		pathprefix = "";
 	}
-	void f(Stream* src);				// Open file.  tar f
-	void x(const char* path);		// Extract a tar archive. tar x
-	void l(const char* path);			// List a tar archive. tar l
+	void C(char* path);				// Set directory extract to. tar -C  
+	void f(Stream* src);			// Open file.  tar -f
+	void x(const char* path);		// Extract a tar archive. tar -x
+	void l(const char* path);		// List a tar archive. tar -l
 	//void onFile(cb);
 	//void onDir(cb);
 private:
+	char* pathprefix;
 	int parseoct(const char *p, size_t n);		// Parse an octal number, ignoring leading and trailing nonsense.
 	int is_end_of_archive(const char *p);		// Returns true if this is 512 zero bytes.
-#ifdef MKDIR
+#ifdef TAR_MKDIR
 	void create_dir(char *pathname, int mode);	// Create a directory, including parent directories as necessary.
 #endif
-	File *create_file(char *pathname, int mode);	// Create a file, including parent directory as necessary.
-	int verify_checksum(const char *p);		// Verify the tar checksum.
+	File *create_file(char *pathname, int mode);// Create a file, including parent directory as necessary.
+	int verify_checksum(const char *p);			// Verify the tar checksum.
 	T* FSC;
 	Stream* source;
 	//bool fskip(char *pathname);
 	//cbTarFunc cbFile;
 	//cbTarFunc cbDir;
 };
+
+template <typename T>
+void Tar<T>::C(char* path){
+	pathprefix = (char*)malloc (strlen(path) + 1);
+		if (pathprefix != NULL) {
+			strcpy (pathprefix, path);
+		} else {
+			Serial.println("Memory allocation error");
+			pathprefix = "";
+     	}
+}
 
 template <typename T>
 void Tar<T>::f(Stream* src){
@@ -73,7 +90,7 @@ int Tar<T>::is_end_of_archive(const char *p)
 	return (1);
 }
 
-#ifdef MKDIR
+#ifdef TAR_MKDIR
 template <typename T>
 void Tar<T>::create_dir(char *pathname, int mode)
 {
@@ -109,7 +126,7 @@ File* Tar<T>::create_file(char *pathname, int mode)
 	File* f;
 	f = new File();
 	*f = FSC->open(pathname, "w+");
-#ifdef MKDIR
+#ifdef TAR_MKDIR
 	if (f == NULL) {
 		/* Try creating parent dir and then creating file. */
 		char *p = strrchr(pathname, '/');
@@ -168,69 +185,74 @@ void Tar<T>::x(const char *path)
 			return;
 		}
 		filesize = parseoct(buff + 124, 12);
-		switch (buff[156]) {
-		case '1':
-			Serial.print(" Ignoring hardlink ");
-			Serial.println(buff);
-			break;
-		case '2':
-			Serial.print(" Ignoring symlink");
-			Serial.println(buff);
-			break;
-		case '3':
-			Serial.print(" Ignoring character device");
-			Serial.println(buff);
+		char* fullpath = (char*)malloc (strlen(pathprefix) + strlen(buff) + 1);
+		if (fullpath == NULL) {
+			Serial.println("Memory allocation error. Ignoring entry");
+     	} else {     	
+			strcpy (fullpath, pathprefix);
+			strcat (fullpath, buff);
+			switch (buff[156]) {
+			case '1':
+				Serial.print(" Ignoring hardlink ");
+				Serial.println(buff);
 				break;
-		case '4':
-			Serial.print(" Ignoring block device");
-			Serial.println(buff);
-			break;
-		case '5':
-#ifdef MKDIR
-			Serial.print(" Extracting dir ");
-			Serial.println(buff);
-			create_dir(buff, parseoct(buff + 100, 8));
-			filesize = 0;
-#else
-			Serial.print(" Ignoring dir ");
-			Serial.println(buff);
-#endif
-			break;
-		case '6':
-			Serial.print(" Ignoring FIFO ");
-			Serial.println(buff);
-			break;
-		default:
-			Serial.print(" Extracting file ");
-			Serial.println(buff);
-			f = create_file(buff, parseoct(buff + 100, 8));
-			break;
-		}
-		while (filesize > 0) {
-			bytes_read = source->readBytes(buff, 512);
-			if (bytes_read < 512) {
-				Serial.print("Short read on ");
-				Serial.print(path);
-				Serial.print(": Expected 512, got ");
-				Serial.println(bytes_read);
-				return;
+			case '2':
+				Serial.print(" Ignoring symlink");
+				Serial.println(buff);
+				break;
+			case '3':
+				Serial.print(" Ignoring character device");
+				Serial.println(buff);
+				break;
+			case '4':
+				Serial.print(" Ignoring block device");
+				Serial.println(buff);
+				break;
+			case '5':
+			#ifdef TAR_MKDIR
+				Serial.print(" Extracting dir ");
+				Serial.println(buff);
+				create_dir(buff, parseoct(buff + 100, 8));
+				filesize = 0;
+			#else
+				Serial.print(" Ignoring dir ");
+				Serial.println(buff);
+			#endif
+				break;
+			case '6':
+				Serial.print(" Ignoring FIFO ");
+				Serial.println(buff);
+				break;
+			default:
+				Serial.print(" Extracting file ");
+				Serial.println(buff);
+				f = create_file(fullpath, parseoct(buff + 100, 8));
+				break;
 			}
-			if (filesize < 512)
-				bytes_read = filesize;
-			if (f != NULL) {
-				if (f->write((uint8_t*)buff, bytes_read)
-				    != bytes_read)
-				{
-					Serial.println("Failed write");
-					f->close();
-					f = NULL;
+			while (filesize > 0) {
+				bytes_read = source->readBytes(buff, 512);
+				if (bytes_read < 512) {
+					Serial.print("Short read on ");
+					Serial.print(path);
+					Serial.print(": Expected 512, got ");
+					Serial.println(bytes_read);
+					return;
 				}
+				if (filesize < 512)
+					bytes_read = filesize;
+				if (f != NULL) {
+					if (f->write((uint8_t*)buff, bytes_read) != bytes_read) {
+						Serial.println("Failed write");
+						f->close();
+						f = NULL;
+					}
+				}
+				filesize -= bytes_read;
 			}
-			filesize -= bytes_read;
-		}
-		if (f != NULL) {
-			f->close();
-			f = NULL;
+			if (f != NULL) {
+				f->close();
+				f = NULL;
+			}
 		}
 	}
 }
