@@ -9,12 +9,12 @@ Tar<FS> tar(&SPIFFS);
 void setup() {
   Serial.begin(74880);
   SPIFFS.begin();
-  const char* dest = FILENAME;
-	File f = SPIFFS.open(FILENAME, "r");
+  tar.onFile
+  File f = SPIFFS.open(FILENAME, "r");
   if (f) {
-    tar.f((Stream*)&f);
-    tar.C("/");
-	  tar.x(dest);
+    tar.stream((Stream*)&f);
+    tar.dest("/");
+	  tar.extract();
   } else {
     Serial.println("Error open .tar file");
   }
