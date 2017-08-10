@@ -48,6 +48,7 @@ private:
 
 template <typename T>
 void Tar<T>::C(char* path){
+	free(pathprefix);
 	pathprefix = (char*)malloc (strlen(path) + 1);
 		if (pathprefix != NULL) {
 			strcpy (pathprefix, path);
@@ -163,7 +164,8 @@ void Tar<T>::x(const char *path)
 	File *f = NULL;
 	size_t bytes_read;
 	int filesize;
-
+	char* fullpath = NULL;
+	
 	Serial.print("Extracting from ");
 	Serial.println(path);
 	for (;;) {
@@ -252,7 +254,8 @@ void Tar<T>::x(const char *path)
 			if (f != NULL) {
 				f->close();
 				f = NULL;
-			}
+			}					
+			free(fullpath);
 		}
 	}
 }
