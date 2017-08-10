@@ -13,24 +13,27 @@
  */
 
 /*
- * Callback demo. Skips all files except 'create.txt' and print extraction process messages from callback not from library main code.
+ * Callback demo. Skips all files except 'data/create.txt' and print extraction process messages from callback not from library main code.
  *
  */
 
 #include <FS.h>
+#define TAR_CALLBACK
+#define TAR_SILENT
 #include <untar.h>
 
-#undef TAR_VERBOSE
-
-#define PIN D0
+#define PIN D4
 
 #define FILENAME "/test.tar"
+#define EXTRACT "data/create.txt"
 
 Tar<FS> tar(&SPIFFS);
 bool write = false;
+char* filename = EXTRACT;
+
 bool printFile(char* name) {
 	Serial.print(name);
-	if (strcmp(name, "create.txt")) {
+	if (strcmp(name, filename) == 0) {
 		Serial.println();
 		write = true;
 		return true;
@@ -44,6 +47,7 @@ void blinkWrite(char* data, size_t s) {
 }
 
 void eof() {
+  digitalWrite(PIN, HIGH);  
 	write = false;
 }
 

@@ -23,6 +23,6 @@ onEof			KEYWORD2
 # Constants (LITERAL1)
 #######################################
 
-TAR_VERBOSE		LITERAL1
+TAR_SILENT		LITERAL1
 TAR_CALLBACK		LITERAL1
 TAR_MKDIR		LITERAL1
