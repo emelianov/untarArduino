@@ -8,6 +8,7 @@
  * Released into the public domain.
  *
  * Ported to Arduino library by Alexander Emelainov (a.m.emelianov@gmail.com), August 2017
+ *  https://github.com/emelianov/untarArduino
  *
  */
 
@@ -18,7 +19,7 @@
 #define TAR_VERBOSE
 
 // Comment to remove callback support
-#define TAR_CALLBACK
+//#define TAR_CALLBACK
 
 #ifdef TAR_CALLBACK
 typedef void (*cbTarData)(char* buff, size_t size);
@@ -54,12 +55,12 @@ private:
 	T* FSC;						// FS object
 	Stream* source;					// Source stream
 #ifdef TAR_CALLBACK
-	cbTarProcess cbProcess;				// bool cbExclude(filename) calback. Return 'false' means skip file creation then
-	cbTarData cbData;				// cbNull(data, size) callback. Called for each data block if file creation was skipped.
-	cbTarEof cbEof;					// cnEof() callback. Called on end of file if file was skipped or not.
+	cbTarProcess cbProcess = NULL;			// bool cbExclude(filename) calback. Return 'false' means skip file creation then
+	cbTarData cbData = NULL;			// cbNull(data, size) callback. Called for each data block if file creation was skipped.
+	cbTarEof cbEof = NULL;				// cnEof() callback. Called on end of file if file was skipped or not.
 #endif
 };
-
+#ifdef TAR_CALLBACK
 template <typename T>
 void Tar<T>::onFile(cbTarProcess cb){
 	cbProcess = cb;
@@ -74,14 +75,14 @@ template <typename T>
 void Tar<T>::onEof(cbTarEof cb){
 	cbEof = cb;
 }
-
+#endif
 template <typename T>
 void Tar<T>::dest(char* path){
 	pathprefix = (char*)malloc (strlen(path) + 1);
 		if (pathprefix != NULL) {
 			strcpy (pathprefix, path);
 		} else {
-		#ifdef TAR_VERBODSE
+		#ifdef TAR_VERBOSE
 			Serial.println("Memory allocation error");
 		#endif
 			pathprefix = "";
@@ -146,7 +147,7 @@ void Tar<T>::create_dir(char *pathname, int mode)
 		}
 	}
 	if (r != 0)
-	#ifdef TAR_VERBODSE
+	#ifdef TAR_VERBOSE
 		Serial.print("Could not create directory %s");
 		Serial.println(pathname);
 	#endif
@@ -196,34 +197,34 @@ void Tar<T>::extract()
 	File *f = NULL;
 	size_t bytes_read;
 	int filesize;
-#ifdef TAR_VERBODSE
-	Serial.print("Extracting from source:");
+#ifdef TAR_VERBOSE
+	Serial.println("\nExtracting from source:");
 #endif
 	for (;;) {
 		bytes_read = source->readBytes(buff, 512);
 		if (bytes_read < 512) {
-		#ifdef TAR_VERBODSE
-			Serial.print("Short read: expected 512, got ");
+		#ifdef TAR_VERBOSE
+			Serial.print(" * Short read: expected 512, got ");
 			Serial.println(bytes_read);
 		#endif
 			return;
 		}
 		if (is_end_of_archive(buff)) {
-		#ifdef TAR_VERBODSE
+		#ifdef TAR_VERBOSE
 			Serial.print("End of source file");
 		#endif
 			return;
 		}
 		if (!verify_checksum(buff)) {
-		#ifdef TAR_VERBODSE
-			Serial.println("Checksum failure\n");
+		#ifdef TAR_VERBOSE
+			Serial.println("* Checksum failure");
 		#endif
 			return;
 		}
 		char* fullpath = (char*)malloc (strlen(pathprefix) + strlen(buff) + 1);
 		if (fullpath == NULL) {
-		#ifdef TAR_VERBODSE
-			Serial.println("Memory allocation error. Ignoring entry");
+		#ifdef TAR_VERBOSE
+			Serial.println("* Memory allocation error. Ignoring entry");
 		#endif
      	} else {     	
 			filesize = parseoct(buff + 124, 12);
@@ -231,52 +232,52 @@ void Tar<T>::extract()
 			strcat (fullpath, buff);
 			switch (buff[156]) {
 			case '1':
-			#ifdef TAR_VERBODSE
-				Serial.print(" Ignoring hardlink ");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Ignoring hardlink ");
 				Serial.println(buff);
 			#endif
 				break;
 			case '2':
-			#ifdef TAR_VERBODSE
-				Serial.print(" Ignoring symlink");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Ignoring symlink");
 				Serial.println(buff);
 			#endif
 				break;
 			case '3':
-			#ifdef TAR_VERBODSE
-				Serial.print(" Ignoring character device");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Ignoring character device");
 				Serial.println(buff);
 			#endif
 				break;
 			case '4':
-			#ifdef TAR_VERBODSE
-				Serial.print(" Ignoring block device");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Ignoring block device");
 				Serial.println(buff);
 			#endif
 				break;
 			case '5':
+				filesize = 0;
 			#ifdef TAR_MKDIR
-			#ifdef TAR_VERBODSE
-				Serial.print(" Extracting dir ");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Extracting dir ");
 				Serial.println(buff);
 			#endif
 				create_dir(buff, parseoct(buff + 100, 8));
-				filesize = 0;
 			#else
-				Serial.print(" Ignoring dir ");
+				Serial.print("- Ignoring dir ");
 				Serial.println(buff);
 			#endif
 				break;
 			case '6':
-			#ifdef TAR_VERBODSE
-				Serial.print(" Ignoring FIFO ");
+			#ifdef TAR_VERBOSE
+				Serial.print("- Ignoring FIFO ");
 				Serial.println(buff);
 			#endif
 				break;
 			default:
-			#ifdef TAR_VERBODSE
-				Serial.print(" Extracting file ");
-				Serial.println(buff);
+			#ifdef TAR_VERBOSE
+				Serial.print("- Extracting file ");
+				Serial.print(buff);
 			#endif
 			#ifdef TAR_CALLBACK
 				if (cbProcess == NULL || cbProcess(buff)) {
@@ -288,9 +289,12 @@ void Tar<T>::extract()
 				break;
 			}
 			while (filesize > 0) {
+				#ifdef TAR_VERBOSE
+				Serial.print(".");
+				#endif
 				bytes_read = source->readBytes(buff, 512);
 				if (bytes_read < 512) {
-				#ifdef TAR_VERBODSE
+				#ifdef TAR_VERBOSE
 					Serial.print("Short read: Expected 512, got ");
 					Serial.println(bytes_read);
 				#endif
@@ -300,7 +304,7 @@ void Tar<T>::extract()
 					bytes_read = filesize;
 				if (f != NULL) {
 					if (f->write((uint8_t*)buff, bytes_read) != bytes_read) {
-					#ifdef TAR_VERBODSE
+					#ifdef TAR_VERBOSE
 						Serial.println("Failed write");
 					#endif
 						f->close();
@@ -314,6 +318,9 @@ void Tar<T>::extract()
 				filesize -= bytes_read;
 			}
 			if (f != NULL) {
+				#ifdef TAR_VERBOSE
+				Serial.println();
+				#endif
 				f->close();
 				f = NULL;
 			}

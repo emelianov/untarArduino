@@ -1,3 +1,21 @@
+/*
+ * This code based on
+ * 
+ * "untar" is an extremely simple tar extractor
+ *
+ * Written by Tim Kientzle, March 2009.
+ *
+ * Released into the public domain.
+ *
+ * Ported to Arduino library by Alexander Emelainov (a.m.emelianov@gmail.com), August 2017
+ *  https://github.com/emelianov/untarArduino
+ *
+ */
+
+/*
+ * Callback demo. Skips all files except 'create.txt' and print extraction process messages from callback not from library main code.
+ *
+ */
 
 #include <FS.h>
 #include <untar.h>
