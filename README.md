@@ -1,8 +1,8 @@
 # untarArduino
 
-Extremely simple tar extractor
+Extremely simple tar extractor Arduino library.
 
-# Disclamber
+# Copyright notice
 
 This code based on
  
@@ -16,4 +16,4 @@ Original code taken from https://opensource.apple.com/source/libarchive/libarchi
 
 Ported to Arduino library by Alexander Emelainov (a.m.emelianov@gmail.com), August 2017
 
-## (It's just a draft and not yet working)
+https://github.com/emelianov/untarArduino

@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map For Tar
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+Tar			KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+extract			KEYWORD2
+stream			KEYWORD2
+dest			KEYWORD2
+onFile			KEYWORD2
+onData			KEYWORD2
+onEof			KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+TAR_SILENT		LITERAL1
+TAR_CALLBACK		LITERAL1
+TAR_MKDIR		LITERAL1
