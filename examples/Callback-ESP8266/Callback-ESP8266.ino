@@ -61,7 +61,7 @@ void setup() {
   tar.onEof(eof);
   File f = SPIFFS.open(FILENAME, "r");
   if (f) {
-    tar.stream((Stream*)&f);
+    tar.open((Stream*)&f);
     tar.dest("/");
 	  tar.extract();
   } else {

@@ -45,29 +45,29 @@ public:
 		pathprefix = "";
 	}
 	void dest(char* path);		// Set directory extract to. tar -C  
-	void stream(Stream* src);	// Source stream. Can use (Stream*)File as source
+	void open(Stream* src);		// Source stream. Can use (Stream*)File as source
 	void extract();			// Extract a tar archive
-#ifdef TAR_CALLBACK
-	void onFile(cbTarProcess cb);
-	void onData(cbTarData cb);
-	void onEof(cbTarEof cb);
-#endif
+	#ifdef TAR_CALLBACK
+	void onFile(cbTarProcess cb);	// Sets callback that executed on each file in archive.
+	void onData(cbTarData cb);	// Sets callback that executed on each 512 bytes data block in file
+	void onEof(cbTarEof cb);	// Sets callback that executed on each file end
+	#endif
 private:
-	char* pathprefix;
+	char* pathprefix;		// Stores filename prefix to be added to each file
 	int parseoct(const char *p, size_t n);		// Parse an octal number, ignoring leading and trailing nonsense.
 	int is_end_of_archive(const char *p);		// Returns true if this is 512 zero bytes.
-#ifdef TAR_MKDIR
+	#ifdef TAR_MKDIR
 	void create_dir(char *pathname, int mode);	// Create a directory, including parent directories as necessary.
-#endif
+	#endif
 	File *create_file(char *pathname, int mode);	// Create a file, including parent directory as necessary.
 	int verify_checksum(const char *p);		// Verify the tar checksum.
 	T* FSC;						// FS object
 	Stream* source;					// Source stream
-#ifdef TAR_CALLBACK
+	#ifdef TAR_CALLBACK
 	cbTarProcess cbProcess = NULL;			// bool cbExclude(filename) calback. Return 'false' means skip file creation then
 	cbTarData cbData = NULL;			// cbNull(data, size) callback. Called for each data block if file creation was skipped.
 	cbTarEof cbEof = NULL;				// cnEof() callback. Called on end of file if file was skipped or not.
-#endif
+	#endif
 	char buff[512];
 	File *f = NULL;
 	size_t bytes_read;
@@ -96,9 +96,9 @@ void Tar<T>::dest(char* path){
 		if (pathprefix != NULL) {
 			strcpy (pathprefix, path);
 		} else {
-		#ifndef TAR_SILENT
+			#ifndef TAR_SILENT
 			Serial.println("Memory allocation error");
-		#endif
+			#endif
 			pathprefix = "";
      	}
 }
@@ -163,10 +163,10 @@ void Tar<T>::create_dir(char *pathname, int mode)
 		}
 	}
 	if (r != 0)
-	#ifndef TAR_SILENT
+		#ifndef TAR_SILENT
 		Serial.print("Could not create directory %s");
 		Serial.println(pathname);
-	#endif
+		#endif
 }
 #endif
 
@@ -176,7 +176,7 @@ File* Tar<T>::create_file(char *pathname, int mode)
 	File* f;
 	f = new File();
 	*f = FSC->open(pathname, "w+");
-#ifdef TAR_MKDIR
+	#ifdef TAR_MKDIR
 	if (f == NULL) {
 		/* Try creating parent dir and then creating file. */
 		char *p = strrchr(pathname, '/');
@@ -187,7 +187,7 @@ File* Tar<T>::create_file(char *pathname, int mode)
 			f = FSC->open(pathname, "w+");
 		}
 	}
-#endif
+	#endif
 	return (f);
 }
 
@@ -209,49 +209,48 @@ int Tar<T>::verify_checksum(const char *p)
 template <typename T>
 void Tar<T>::extract()
 {
-//	char buff[512];
-//	File *f = NULL;
-//	size_t bytes_read;
-//	int filesize;
 	char* fullpath = NULL;
-#ifndef TAR_SILENT
-	Serial.println("\nExtracting from source:");
-#endif
+	#ifndef TAR_SILENT
+	if (filesize == 0) {
+		Serial.println("\nExtracting tar");
+	} else {
+		Serial.println("Resume file extraction");
+	}
+	#endif
 	for (;;) {
-		Serial.println(filesize);
 		if (bytes_read > 0) {
 			bytes_read += source->readBytes(buff, 512 - bytes_read);
 		} else {
 			bytes_read = source->readBytes(buff, 512);
 		}
 		if (bytes_read < 512) {
-		#ifndef TAR_SILENT
+			#ifndef TAR_SILENT
 			Serial.print(" * Short read: expected 512, got ");
 			Serial.println(bytes_read);
-		#endif
+			#endif
 			_state = TAR_SHORT_READ;
 			return;
 		}
 		if (filesize == 0) {
 			if (is_end_of_archive(buff)) {
-			#ifndef TAR_SILENT
+				#ifndef TAR_SILENT
 				Serial.println("End of source file");
-			#endif
+				#endif
 				_state = TAR_SOURCE_EOF;
 				return;
 			}
 			if (!verify_checksum(buff)) {
-			#ifndef TAR_SILENT
+				#ifndef TAR_SILENT
 				Serial.println("* Checksum failure");
-			#endif
+				#endif
 				_state = TAR_CHECKSUM_MISMACH;
 				return;
 			}
 			fullpath = (char*)malloc (strlen(pathprefix) + strlen(buff) + 1);
 			if (fullpath == NULL) {
-			#ifndef TAR_SILENT
+				#ifndef TAR_SILENT
 				Serial.println("* Memory allocation error. Ignoring entry");
-			#endif
+				#endif
      		} else {
      			_state = TAR_IDLE;
 				//filesize = parseoct(buff + 124, 12);
@@ -259,115 +258,114 @@ void Tar<T>::extract()
 				strcat (fullpath, buff);
 				switch (buff[156]) {
 				case '1':
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring hardlink ");
 					Serial.println(buff);
-				#endif
+					#endif
 					break;
 				case '2':
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring symlink");
 					Serial.println(buff);
-				#endif
+					#endif
 					break;
 				case '3':
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring character device");
 					Serial.println(buff);
-				#endif
+					#endif
 					break;
 				case '4':
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring block device");
 					Serial.println(buff);
-				#endif
+					#endif
 					break;
 				case '5':
 					filesize = 0;
-				#ifdef TAR_MKDIR
-				#ifndef TAR_SILENT
+					#ifdef TAR_MKDIR
+					#ifndef TAR_SILENT
 					Serial.print("- Extracting dir ");
 					Serial.println(buff);
-				#endif
+					#endif
 					create_dir(buff, parseoct(buff + 100, 8));
-				#else
-				#ifndef TAR_SILENT
+					#else
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring dir ");
 					Serial.println(buff);
-				#endif
-				#endif
+					#endif
+					#endif
 					break;
 				case '6':
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Ignoring FIFO ");
 					Serial.println(buff);
-				#endif
+					#endif
 					break;
 				default:
-				#ifndef TAR_SILENT
+					#ifndef TAR_SILENT
 					Serial.print("- Extracting file ");
 					Serial.print(buff);
-				#endif
+					#endif
 					filesize = parseoct(buff + 124, 12);
 					_state = TAR_FILE_EXTRACT;
-				#ifdef TAR_CALLBACK
+					#ifdef TAR_CALLBACK
 					if (cbProcess == NULL || cbProcess(buff)) {
-				#endif
-				Serial.println(fullpath);
+					#endif
 						f = create_file(fullpath, parseoct(buff + 100, 8));
-				#ifdef TAR_CALLBACK
+					#ifdef TAR_CALLBACK
 					}
-				#endif
+					#endif
 					break;
 				}
 			}
 			bytes_read = 0;
 		}
-			while (filesize > 0) {
+		while (filesize > 0) {
+			#ifndef TAR_SILENT
+			Serial.print(".");
+			#endif
+			if (bytes_read == 0)
+			bytes_read = source->readBytes(buff, 512);
+			if (bytes_read < 512) {
 				#ifndef TAR_SILENT
-				Serial.print(".");
+				Serial.print("Data short read: Expected 512, got ");
+				Serial.println(bytes_read);
 				#endif
-				if (bytes_read == 0)
-				bytes_read = source->readBytes(buff, 512);
-				if (bytes_read < 512) {
-				#ifndef TAR_SILENT
-					Serial.print("Data short read: Expected 512, got ");
-					Serial.println(bytes_read);
-				#endif
-					_state = TAR_SHORT_READ;
-					return;
-				}
-				if (filesize < 512)
-					bytes_read = filesize;
-				if (f != NULL) {
-					if (f->write((uint8_t*)buff, bytes_read) != bytes_read) {
-					#ifndef TAR_SILENT
-						Serial.println("Failed write");
-					#endif
-						_state = TAR_WRITE_ERROR;
-						f->close();
-						f = NULL;
-					}
-				}
-				#ifdef TAR_CALLBACK
-				if (cbData != NULL)
-					cbData(buff, bytes_read);
-				#endif
-				filesize -= bytes_read;
-				bytes_read = 0;
+				_state = TAR_SHORT_READ;
+				return;
 			}
+			if (filesize < 512)
+				bytes_read = filesize;
 			if (f != NULL) {
-				#ifndef TAR_SILENT
-				Serial.println();
-				#endif
-				f->close();
-				f = NULL;
+				if (f->write((uint8_t*)buff, bytes_read) != bytes_read) {
+					#ifndef TAR_SILENT
+					Serial.println(" - Failed write");
+					#endif
+					_state = TAR_WRITE_ERROR;
+					f->close();
+					f = NULL;
+				}
 			}
-			_state = TAR_DONE;
-			if (fullpath) free(fullpath);
+			#ifdef TAR_CALLBACK
+			if (cbData != NULL)
+				cbData(buff, bytes_read);
+			#endif
+			filesize -= bytes_read;
+			bytes_read = 0;
+		}
+		if (f != NULL) {
+			#ifndef TAR_SILENT
+			Serial.println();
+			#endif
+			f->close();
+			f = NULL;
+		}
+		_state = TAR_DONE;
+		if (fullpath) free(fullpath);
 		#ifdef TAR_CALLBACK
-			if (cbEof != NULL)
-				cbEof();
+		if (cbEof != NULL)
+			cbEof();
 		#endif
 		bytes_read = 0;
 	}

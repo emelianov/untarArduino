@@ -2,7 +2,7 @@
 
 Extremely simple tar extractor Arduino library.
 
-# Copyright notice
+## Copyright notice
 
 This code based on
  

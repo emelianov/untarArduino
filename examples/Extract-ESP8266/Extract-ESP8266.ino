@@ -29,7 +29,7 @@ void setup() {
   SPIFFS.begin();			// Initialize SPIFFS
   File f = SPIFFS.open(FILENAME, "r");	// Open source file
   if (f) {
-    tar.stream((Stream*)&f);		// Pass source file as Stream to Tar object
+    tar.open((Stream*)&f);		// Pass source file as Stream to Tar object
     tar.dest("/");			// Set destination prefix to append to all files in archive. Should start with "/" for SPIFFS
     tar.extract();			// Process with extraction
   } else {

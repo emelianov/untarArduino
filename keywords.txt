@@ -14,7 +14,7 @@ untar			KEYWORD1
 #######################################
 
 extract			KEYWORD2
-stream			KEYWORD2
+open			KEYWORD2
 dest			KEYWORD2
 onFile			KEYWORD2
 onData			KEYWORD2

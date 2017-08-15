@@ -1,3 +1,9 @@
+//
+// Simple class to read data from buffer as it was Stream
+//
+// (c)2017, Alexander Emelianov (a.m.emelianov@gmail.com)
+//
+
 #pragma once
 
 class StreamBuf : public Stream {
@@ -26,7 +32,6 @@ class StreamBuf : public Stream {
     uint8_t t = buff[pos];
     pos++;
     return t;
-    //return (pos < length)?buff[pos++]:-1;
   }
   int available() {
     if (pos >= length) return -1;
