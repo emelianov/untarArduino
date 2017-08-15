@@ -104,7 +104,7 @@ void Tar<T>::dest(char* path){
 }
 
 template <typename T>
-void Tar<T>::stream(Stream* src){
+void Tar<T>::open(Stream* src){
 	source = src;
 	filesize = 0;
 	_state = TAR_IDLE;
