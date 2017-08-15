@@ -11,8 +11,8 @@
 #include "StreamBuf.h"
 
 const char* host = "esp8266-webupdate";
-const char* ssid = "EW";
-const char* password = "iMpress6264";
+const char* ssid = "sid";
+const char* password = "pass";
 
 ESP8266WebServer server(80);
 const char* serverIndex = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
